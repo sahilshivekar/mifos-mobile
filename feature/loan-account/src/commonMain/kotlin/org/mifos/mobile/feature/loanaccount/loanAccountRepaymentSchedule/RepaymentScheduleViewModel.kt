@@ -91,6 +91,10 @@ internal class RepaymentScheduleViewModel(
                 sendEvent(RepaymentScheduleEvent.ExportPdf)
             }
 
+            RepaymentScheduleAction.ExportToPdfLibrary -> {
+                sendEvent(RepaymentScheduleEvent.ExportPdfLibrary)
+            }
+
             is RepaymentScheduleAction.PdfExportError -> {
                 updateState {
                     it.copy(
@@ -484,6 +488,11 @@ sealed interface RepaymentScheduleEvent {
     data object ExportPdf : RepaymentScheduleEvent
 
     /**
+     * Event to export the repayment schedule to PDF using the library.
+     */
+    data object ExportPdfLibrary : RepaymentScheduleEvent
+
+    /**
      * Event to pay an installment.
      *
      * @property accountId The ID of the loan account.
@@ -519,6 +528,11 @@ sealed interface RepaymentScheduleAction {
      * Action to export the repayment schedule to PDF.
      */
     data object ExportToPdf : RepaymentScheduleAction
+
+    /**
+     * Action to export the repayment schedule to PDF using the library.
+     */
+    data object ExportToPdfLibrary : RepaymentScheduleAction
 
     /**
      * Action to handle PDF export error.

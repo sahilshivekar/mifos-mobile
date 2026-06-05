@@ -33,6 +33,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mobilebytelabs.kmptoolkit.pdfgenerator.ExperimentalPdfGeneratorApi
+import com.mobilebytelabs.kmptoolkit.pdfgenerator.PdfOutput
+import com.mobilebytelabs.kmptoolkit.pdfgenerator.PdfResult
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import mifos_mobile.feature.loan_account.generated.resources.Res
@@ -67,6 +70,7 @@ import mifos_mobile.feature.loan_account.generated.resources.feature_loan_total_
 import mifos_mobile.feature.loan_account.generated.resources.feature_loan_total_installments_label
 import mifos_mobile.feature.loan_account.generated.resources.feature_loan_total_label
 import mifos_mobile.feature.loan_account.generated.resources.repayment_schedule
+import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -93,6 +97,8 @@ import org.mifos.mobile.core.ui.utils.pdf.rememberPdfGenerator
 import org.mifos.mobile.feature.loanaccount.loanAccountRepaymentSchedule.pdf.RepaymentScheduleHtmlGenerator
 import org.mifos.mobile.feature.loanaccount.loanAccountRepaymentSchedule.pdf.RepaymentSchedulePdfStrings
 import template.core.base.designsystem.theme.KptTheme
+import com.mobilebytelabs.kmptoolkit.pdfgenerator.PageConfig as LibraryPageConfig
+import com.mobilebytelabs.kmptoolkit.pdfgenerator.PdfGenerator as LibraryPdfGenerator
 
 /**
  * The main composable for the repayment schedule screen.
@@ -111,6 +117,8 @@ internal fun RepaymentScheduleScreen(
     val state by viewModel.stateFlow.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
     val pdfGenerator = rememberPdfGenerator()
+    @OptIn(ExperimentalPdfGeneratorApi::class)
+    val libraryPdfGenerator = remember { LibraryPdfGenerator() }
 
     EventsEffect(viewModel.eventFlow) { event ->
         when (event) {
@@ -138,6 +146,49 @@ internal fun RepaymentScheduleScreen(
                                 RepaymentScheduleAction.PdfExportError(
                                     title = getString(Res.string.feature_loan_export_pdf_error_title),
                                     message = getString(Res.string.feature_loan_export_pdf_error),
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
+
+            RepaymentScheduleEvent.ExportPdfLibrary -> {
+                state.repaymentScheduleTableData?.let { tableData ->
+                    coroutineScope.launch {
+                        try {
+                            val pdfStrings = createPdfStrings()
+                            val htmlGenerator = RepaymentScheduleHtmlGenerator(tableData, pdfStrings)
+                            val htmlContent = htmlGenerator.generateHtml()
+                            
+                            @OptIn(ExperimentalPdfGeneratorApi::class, ExperimentalResourceApi::class)
+//                            val logoBytes = CoreUiRes.readBytes("drawable/ic_icon_mifos_logo.svg")
+                            
+//                            @OptIn(ExperimentalPdfGeneratorApi::class)
+//                            val branding = PdfBranding.mifosDefault(
+//                                logo = PdfLogo.Svg(logoBytes)
+//                            )
+                            
+//                            @OptIn(ExperimentalPdfGeneratorApi::class)
+                            val pageConfig = LibraryPageConfig()
+                            
+                            @OptIn(ExperimentalPdfGeneratorApi::class)
+                            val result = libraryPdfGenerator.generateFromHtml(
+                                html = htmlContent,
+                                output = PdfOutput.Save,
+                                pageConfig = pageConfig,
+                            )
+                            
+                            @OptIn(ExperimentalPdfGeneratorApi::class)
+                            if (result is PdfResult.Failure) {
+                                throw Exception("PDF Generation failed: ${result.error}")
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            viewModel.trySendAction(
+                                RepaymentScheduleAction.PdfExportError(
+                                    getString(Res.string.feature_loan_export_pdf_error_title),
+                                    getString(Res.string.feature_loan_export_pdf_error),
                                 ),
                             )
                         }
@@ -208,6 +259,12 @@ internal fun RepaymentScreenContent(
                 Icon(
                     imageVector = MifosIcons.Export,
                     contentDescription = stringResource(Res.string.feature_loan_export_to_pdf),
+                )
+            }
+            IconButton(onClick = { onAction(RepaymentScheduleAction.ExportToPdfLibrary) }) {
+                Icon(
+                    imageVector = MifosIcons.Export,
+                    contentDescription = "Export to PDF via library",
                 )
             }
         },

@@ -27,7 +27,7 @@ kotlin {
             implementation(compose.components.uiToolingPreview)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.html)
-
+            implementation(libs.cmp.pdf.generator)
             api(projects.core.ui)
             api(projects.core.model)
             api(projects.core.common)
